@@ -102,6 +102,8 @@ FAST_CODE void pwmDshotSetDirectionOutput(
     {
 #if defined(STM32F4)
         pDmaInit->DMA_DIR = DMA_DIR_MemoryToPeripheral;
+#elif defined(CH32H4) || defined(CH32H41x)
+        pDmaInit->DMA_DIR = DMA_DIR_PeripheralDST;
 #endif
     }
 
@@ -130,7 +132,13 @@ static void pwmDshotSetDirectionInput(
         inputStampUs = micros();
     }
     TIM_ARRPreloadConfig(timer, ENABLE);
+#if defined(CH32H4)
+    // TIM_ARRPreloadConfig(timer, DISABLE);
+    timer->CTLR1 &= ~(TIM_ARPE);
+    timer->ATRLR = 0xffff;
+#else
     timer->ARR = 0xffffffff;
+#endif
 
     TIM_ICInit(timer, &motor->icInitStruct);
 
@@ -163,7 +171,11 @@ void pwmCompleteDshotMotorUpdate(void)
 #endif
         {
             TIM_ARRPreloadConfig(dmaMotorTimers[i].timer, DISABLE);
+#if defined(CH32H4)
+            dmaMotorTimers[i].timer->ATRLR = dmaMotorTimers[i].outputPeriod;
+#else
             dmaMotorTimers[i].timer->ARR = dmaMotorTimers[i].outputPeriod;
+#endif
             TIM_ARRPreloadConfig(dmaMotorTimers[i].timer, ENABLE);
             TIM_SetCounter(dmaMotorTimers[i].timer, 0);
             TIM_DMACmd(dmaMotorTimers[i].timer, dmaMotorTimers[i].timerDmaSources, ENABLE);
@@ -284,14 +296,22 @@ bool pwmDshotMotorHardwareConfig(const timerHardware_t *timerHardware, uint8_t m
     const IO_t motorIO = IOGetByTag(timerHardware->tag);
 
     uint8_t pupMode = 0;
+#if defined(CH32H4)
+    pupMode = (output & TIMER_OUTPUT_INVERTED) ? GPIO_PULL_DOWN : GPIO_PULL_UP;
+#else
     pupMode = (output & TIMER_OUTPUT_INVERTED) ? GPIO_PuPd_DOWN : GPIO_PuPd_UP;
+#endif
 #ifdef USE_DSHOT_TELEMETRY
     if (useDshotTelemetry) {
         output ^= TIMER_OUTPUT_INVERTED;
     }
 #endif
 
+#if defined(CH32H4)
+    motor->iocfg = IO_CONFIG(DIR_OUT, GPIO_MODE_OUT_AF_PP, GPIO_SPEED_VERY_HIGH, pupMode);
+#else
     motor->iocfg = IO_CONFIG(GPIO_Mode_AF, GPIO_Speed_50MHz, GPIO_OType_PP, pupMode);
+#endif
     IOConfigGPIOAF(motorIO, motor->iocfg, timerHardware->alternateFunction);
 
     if (configureTimer) {

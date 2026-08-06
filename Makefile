@@ -271,7 +271,9 @@ CFLAGS     += $(ARCH_FLAGS) \
               $(addprefix -I,$(INCLUDE_DIRS)) \
               $(DEBUG_FLAGS) \
               -std=gnu17 \
-              -Wall -Wextra -Werror -Wpedantic -Wunsafe-loop-optimizations -Wdouble-promotion \
+              -Wall -Wextra -Werror \
+              -Wno-error=unused-function \
+			  $(if $(findstring CH32H4,$(TARGET_MCU)),,-Wpedantic -Wunsafe-loop-optimizations -Wdouble-promotion) \
               -ffunction-sections \
               -fdata-sections \
               -fno-common \
