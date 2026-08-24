@@ -20,7 +20,7 @@
 #undef USE_USB_MSC
 
 #define SERIAL_PORT_COUNT 9
-#define USABLE_TIMER_CHANNEL_COUNT 7
+#define USABLE_TIMER_CHANNEL_COUNT 6
 
 // UARTs (from schematic: U1–U8 mapped)
 #define USE_UART1
@@ -119,7 +119,7 @@
 
 // Target IO masks (keep defaults unless schematic differs)
 #define TARGET_IO_PORTA 0xff1f
-#define TARGET_IO_PORTB 0xff7c
+#define TARGET_IO_PORTB 0xfffc
 #define TARGET_IO_PORTC 0xffff
 #define TARGET_IO_PORTD 0xffff
 #define TARGET_IO_PORTE 0xffff
