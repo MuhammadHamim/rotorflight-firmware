@@ -52,3 +52,9 @@ ubuntu*.log
 eeprom.bin
 
 
+
+# Accidentally committed files
+CH32H417RM.PDF
+CH32H417DS0.PDF
+CH32H41x_RF_4.6.0_REF_SCH.pdf
+usb_enumeration_debug_usbvcp.md

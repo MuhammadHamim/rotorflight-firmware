@@ -33,8 +33,8 @@
 #define USE_UART8
 
 // UART pin mapping per FC-30_H415-v0.3 schematic
-#define UART1_TX_PIN PA9  // U1TX
-#define UART1_RX_PIN PA10 // U1RX
+#define UART1_TX_PIN PB6  // U1TX
+#define UART1_RX_PIN PB7  // U1RX
 #define UART2_TX_PIN PA2  // U2TX
 #define UART2_RX_PIN PA3  // U2RX
 #define UART3_TX_PIN PA13 // U3TX
