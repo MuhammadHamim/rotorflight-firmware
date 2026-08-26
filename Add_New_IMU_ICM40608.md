@@ -66,7 +66,7 @@ in the `accgyro_mpu.c` file, add to `gyroSpiDetectFnTable[]`
 
 ```c
 case ICM_40608_SPI:
-#if defined(STM32H7)
+#if defined(CH32H41x) || defined(CH32H4)
     gyroRateKHz = GYRO_RATE_8_kHz;
     gyroSampleRateHz = 8000;
     accSampleRateHz = 1000;
