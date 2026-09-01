@@ -24,7 +24,6 @@
 #include <math.h>
 #include "platform.h"
 
-
 #include "blackbox/blackbox.h"
 
 #include "build/build_config.h"
@@ -269,8 +268,8 @@ void init(void)
 #endif
 
     systemInit();
-    // DIAG_BLINK(1); /* Stage 1: systemInit completed */
 
+    // Checkpoint 1: systemInit() done (SysTick running, so delay() works now).
     // Initialize task data as soon as possible. Has to be done before tasksInit(),
     // and any init code that may try to modify task behaviour before tasksInit().
     tasksInitData();
@@ -697,8 +696,8 @@ void init(void)
 #ifdef USE_ADC
     adcInit(adcConfig());
 #endif
-    // DIAG_BLINK(5); /* Stage 5: ADC init completed */
 
+    /*The program is stacking in this block of code*/
     initBoardAlignment(boardAlignment());
 
     if (!sensorsAutodetect())
@@ -714,7 +713,7 @@ void init(void)
         }
         setArmingDisabled(ARMING_DISABLED_NO_GYRO);
     }
-    // DIAG_BLINK(6); /* Stage 6: sensorsAutodetect completed */
+    /*The program is stacking in this block of code*/
 
     systemState |= SYSTEM_STATE_SENSORS_READY;
 
@@ -925,8 +924,6 @@ void init(void)
     // Initialize MSP
     mspInit();
     mspSerialInit();
-    // DIAG_BLINK(7); /* Stage 7: MSP initialized */
-
 /*
  * CMS, display devices and OSD
  */

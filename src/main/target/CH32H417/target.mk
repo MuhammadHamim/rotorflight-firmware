@@ -19,6 +19,7 @@ TARGET_SRC = \
             drivers/compass/compass_lis3mdl.c \
             drivers/max7456.c \
             drivers/accgyro/accgyro_spi_icm40608.c \
+            drivers/accgyro/accgyro_spi_icm40609.c \
             
             
 FEATURES += ONBOARDFLASH

@@ -29,6 +29,9 @@
 #include "drivers/accgyro/accgyro.h"
 #include "drivers/accgyro/accgyro_mpu.h"
 #include "drivers/accgyro/accgyro_spi_icm40608.h"
+#if defined(USE_ICM40608_AS_ICM40609D)
+#include "drivers/accgyro/accgyro_spi_icm40609.h"
+#endif
 #include "drivers/bus_spi.h"
 #include "drivers/exti.h"
 #include "drivers/io.h"
@@ -119,8 +122,13 @@ bool icm40608SpiAccDetect(accDev_t *acc)
         return false;
     }
 
+#if defined(USE_ICM40608_AS_ICM40609D)
+    acc->initFn = icm40609AccInit;
+    acc->readFn = mpuAccReadSPI;
+#else
     acc->initFn = icm40608AccInit;
     acc->readFn = icm40608AccRead;
+#endif
 
     return true;
 }
@@ -176,8 +184,13 @@ bool icm40608SpiGyroDetect(gyroDev_t *gyro)
         return false;
     }
 
+#if defined(USE_ICM40608_AS_ICM40609D)
+    gyro->initFn = icm40609GyroInit;
+    gyro->readFn = mpuGyroReadSPI;
+#else
     gyro->initFn = icm40608GyroInit;
     gyro->readFn = icm40608GyroReadSPI;
+#endif
 
     // Datasheet Sec 3.1 Table 1: GYRO_FS_SEL=0 -> +-2000dps -> 16.4 LSB/(deg/s)
     // GYRO_SCALE_2000DPS already encodes this same 16.4 LSB/dps constant
