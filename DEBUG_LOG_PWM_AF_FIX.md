@@ -228,3 +228,77 @@ Build: `make TARGET=CH32H417` → `obj/rotorflight_4.6.0_CH32H417.hex`
 | Tail (PB11) | Motor PWM (DShot requires the mixed-protocol driver work) | ✔ working |
 
 **Note on DShot:** the Configurator's _Throttle Protocol_ is global for all motors. Running standard PWM on the ESC while the tail uses DShot requires the per-motor protocol support described in `MOTOR_SERVO_CONFIGURATION.md`.
+
+---
+
+## 8. Follow-up Bug: DShot Produces No Output (DMAMUX not programmed)
+
+### 8.1 Symptom
+
+With _Throttle Protocol = DSHOT300_ selected in the Configurator, no DShot signal appears on the motor pins (flat line on scope / motors unresponsive). PWM mode still worked fine.
+
+### 8.2 The 7-argument `DEF_TIM` red herring
+
+A reference configuration used 7-argument `DEF_TIM` calls in the DShot bitbang pacer table (`dshot_bitbang.c`):
+
+```c
+DEF_TIM(TIM1, CH1, NONE, TIM_USE_NONE, 0, 8, 0),   // 7 args
+```
+
+The 7th parameter (`upopt`) only exists in the **STM32G4/H7** variant of the `DEF_TIM` macro — it selects the DMA option for the timer _update_ event (used by burst-DMA DShot). The CH32H4 macro is the 6-argument form `(tim, chan, pin, flags, out, dmaopt)` — there is no update-DMA burst mode ported, so **6 arguments is correct** and the missing 7th was not the problem.
+
+The `dmaopt` values (`8, 9, 10, 11`) _are_ meaningful though: they index into the CH32H4 DMAMUX channel pool (`dmaChannelSpec[]` in `dma_reqmap.c`):
+
+| dmaopt | DMA channel     |
+| ------ | --------------- |
+| 0–7    | DMA1_Channel1–8 |
+| 8–11   | DMA2_Channel1–4 |
+| 12–15  | DMA2_Channel5–8 |
+
+On this board TIM8 can never serve as a bitbang _pacer_ (its channels are owned by the servos), so the pacers fall to TIM1_CH1–4 → DMA2_CH1–4 with dmaopts 8–11. Those are free, so the choice is fine.
+
+### 8.3 Root cause: the DMAMUX was never programmed
+
+CH32H4 — like STM32H7/G4 — routes peripheral DMA requests through a **DMAMUX**. A DMA channel does not automatically listen to a peripheral; software must write a _request ID_ into the DMAMUX channel register (`DMA_MuxChannelConfig()`). Without it, the mux input stays at 0 (disabled): the timer counts, the DMA channel is configured and enabled, but **no request ever triggers a transfer** — the DShot frame buffer is never clocked out to the GPIO `BSHR` register.
+
+Tracing the init path for bitbang DShot:
+
+```
+dshotBitbangDevInit()          → motor device created
+  bbPostInit()
+    bbFindPacerTimer()         → picks TIM1_CH1/CH2 (TIM8 skipped: owned by servos)
+    bbMotorConfig()
+      dmaAllocate()            → DMA2_CH1/CH2 ownership ✔
+      bbPort->dmaChannel = dmaSpec->channel   // DMAMUX request ID captured ✔
+    bbSetupDma()
+      dmaEnable()              → RCC clock ✔
+      dmaSetHandler()          → IRQ wired ✔
+      (nothing programs the DMAMUX!)          ✗ ← the bug
+```
+
+`dmaMuxEnable()` existed and worked (the ADC and LED strip drivers both call it), but **neither DShot driver called it**.
+
+### 8.4 The fix
+
+Two one-liner groups, both guarded for CH32H4:
+
+1. **`dshot_bitbang.c` / `bbSetupDma()`** — route the pacer's DMA request:
+
+```c
+#if defined(CH32H4) || defined(CH32H41x)
+    dmaMuxEnable(dmaIdentifier, bbPort->dmaChannel);   // request ID from the DMA spec
+#endif
+```
+
+2. **`pwm_output_dshot.c` / `pwmDshotMotorHardwareConfig()`** — same fix for the non-bitbang DMA-DShot path (used when `dshot_bitbang = OFF`): capture `dmaSpec->channel` (the DMAMUX request) and call `dmaMuxEnable()` after `dmaEnable()`.
+
+### 8.5 Verification
+
+After flashing, DShot300 output appears on both motor pins. To confirm on the scope: bit periods of ~3.3 µs (DShot300), 16-bit frames of ~53 µs, repeated at the PID loop rate; idle level is high.
+
+### 8.6 Lessons
+
+1. **On DMAMUX MCUs (CH32H4/STM32H7/G4), "configure the DMA channel" is incomplete without "route the request".** Every new DMA user needs three steps: clock (`dmaEnable`), request routing (`dmaMuxEnable`), and IRQ (`dmaSetHandler`). The existing port only did this for ADC and LED strip.
+2. **Argument-count mismatches between ports are a porting smell, not always the bug.** The 7-arg `DEF_TIM` belongs to a different MCU's macro; map the _semantics_ (dmaopt → DMAMUX pool index) rather than copying argument counts.
+3. **`dmaGetChannelSpecByTimerValue()` on CH32H4 overwrites a shared `dmaChannelSpec[dmaopt]` entry with the request ID at call time** (`dmaSetupRequest`). The request ID must be consumed promptly (as `bbMotorConfig` does), and you can't cache the spec struct long-term.
+4. When DShot "does nothing at all" (no frames, idle level frozen), the likely culprits are, in order: DMAMUX not routed → pacer timer clock/rate wrong → DMA channel conflict (check `dmaGetOwner`) → pin mux (AF). All are verifiable with `dma` / `timer show` CLI output and a scope on the pacer debug pins.

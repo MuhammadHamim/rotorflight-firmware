@@ -126,7 +126,7 @@ MCU_COMMON_SRC = \
         drivers/bus_spi_config.c \
         drivers/bus_i2c_timing.c \
         drivers/dshot_bitbang_decode.c \
-        drivers/dshot_bitbang_stdperiph.c \
+        drivers/dshot_bitbang_stdperiph_ch32h41x.c \
         drivers/inverter.c \
         drivers/serial_escserial.c \
         drivers/serial_pinconfig.c \
@@ -139,7 +139,7 @@ MCU_COMMON_SRC = \
         drivers/serial_uart_pinconfig.c \
         drivers/dma_ch32h41x.c \
         drivers/dma_common.c \
-        drivers/dshot_bitbang.c \
+        drivers/dshot_bitbang_ch32h41x.c \
         drivers/serial_uart_ch32h41x.c \
         drivers/pwm_output_dshot_shared.c \
         drivers/pwm_output_dshot.c \

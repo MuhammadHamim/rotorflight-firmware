@@ -101,6 +101,7 @@ typedef struct dmaRegCache_s
     uint32_t CNTR;
     uint32_t PADDR;
     uint32_t MADDR;
+    uint32_t M1ADDR;
 #elif defined(STM32G4)
     uint32_t CCR;
     uint32_t CNDTR;
