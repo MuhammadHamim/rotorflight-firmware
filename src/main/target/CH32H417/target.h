@@ -14,6 +14,7 @@
 
 #define USE_TARGET_CONFIG
 #define TARGET_VALIDATECONFIG
+#define USE_EXTERN_1V2
 
 #define USE_VCP
 #define USE_USB_DETECT
