@@ -4,18 +4,12 @@
 			"path": "."
 		},
 		{
-			"name": "V3F",
-			"path": "../V3F"
-		},
-		{
-			"name": "V5F",
-			"path": "../V5F"
+			"name": "CH32H415_DFU-master",
+			"path": "h:\\rotorflight-firmware\\CH32H415_DFU-master"
 		}
 	],
 	"settings": {
-		"mrs.workspace.type": "solution",
-		"mrs.workspace.slnLoaded": "H:\\rotorflight-firmware\\CH32H415_DFU-master\\FC_H415_DFU.wvsln",
-		"mrs.init.arg": "",
+		"mrs.workspace.type": "folder",
 		"files.associations": {
 			"*.c": "c",
 			"*.h": "cpp",

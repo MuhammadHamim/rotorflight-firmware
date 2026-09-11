@@ -33,6 +33,7 @@
 #include "drivers/resource.h"
 #include "drivers/persistent.h"
 #include "drivers/sound_beeper.h"
+#include "drivers/time.h"
 
 #include "flight/servos.h"
 #include "flight/motors.h"
@@ -50,6 +51,14 @@
 
 // cycles per microsecond
 static uint32_t usTicks = 0;
+#if defined(CH32H4)
+// micros() on CH32H4 is a monotonic microsecond accumulator driven by mcycle deltas.
+// It does not depend on SysTick (which cannot be correlated with mcycle without a race),
+// it is ISR-safe (global interrupts are disabled for the few cycles of the snapshot) and
+// it wraps every ~70 minutes, just like the DWT-CYCCNT based micros() on STM32.
+static uint32_t mcycleLast = 0;  // last mcycle snapshot (cycles)
+static uint32_t microsAccum = 0; // accumulated microseconds (rollover in 70 minutes)
+#endif
 // current uptime for 1kHz systick timer. will rollover after 49 days. hopefully we won't care.
 static volatile uint32_t sysTickUptime = 0;
 static volatile uint32_t sysTickValStamp = 0;
@@ -67,9 +76,13 @@ void cycleCounterInit(void)
     usTicks = cpuClockFrequency / 1000000;
 
     // Reset mcycle before use to avoid unpredictable wrap-around
-    __set_MCOUNT_INHIBIT(0x5);  // disable mcycle
-    __set_MCYCLE(0);            // clear mcycle
-    __set_MCOUNT_INHIBIT(0x0);  // enable mcycle
+    __set_MCOUNT_INHIBIT(0x5); // disable mcycle
+    __set_MCYCLE(0);           // clear mcycle
+    __set_MCOUNT_INHIBIT(0x0); // enable mcycle
+
+    // Initialize the micros() accumulator state (mcycle now starts at 0)
+    mcycleLast = 0;
+    microsAccum = 0;
 #elif defined(USE_HAL_DRIVER)
     cpuClockFrequency = HAL_RCC_GetSysClockFreq();
 #else
@@ -145,12 +158,9 @@ void __attribute__((interrupt("WCH-Interrupt-fast"))) SysTick0_Handler(void)
 uint32_t microsISR(void)
 {
 #if defined(CH32H4)
-    uint32_t ms = sysTickUptime;
-    uint32_t cycle_cnt;
-    // Read mcycle CSR
-    asm volatile("csrr %0, mcycle" : "=r"(cycle_cnt));
-    // Use modulo to get cycles within current ms
-    return (ms * 1000) + (cycle_cnt / usTicks) % 1000;
+    // micros() is ISR-safe on CH32H4 (it disables global interrupts only for a few
+    // cycles and restores them conditionally), so it is safe to call from ISRs too.
+    return micros();
 #else
     register uint32_t ms, pending, cycle_cnt;
 
@@ -175,7 +185,36 @@ uint32_t microsISR(void)
 uint32_t micros(void)
 {
 #if defined(CH32H4)
-    return microsISR();
+    uint32_t mstatus;
+    uint32_t now, delta, dUs;
+
+    // Take an atomic snapshot: disable global interrupts for the few cycles of the
+    // read+update so a nested ISR cannot re-enter and corrupt the accumulator state.
+    // MIE (mstatus bit 3) is cleared, then restored only if it was set before - this
+    // keeps the function safe when called from within an ISR (MIE already cleared).
+    asm volatile("csrr %0, mstatus" : "=r"(mstatus));
+    asm volatile("csrci mstatus, 8" ::: "memory");
+
+    asm volatile("csrr %0, mcycle" : "=r"(now));
+
+    // Wrap-safe delta (mcycle is 32-bit here; correct as long as micros() is called
+    // at least once per mcycle wrap period (~15s at 288MHz), which the scheduler
+    // always guarantees)
+    delta = now - mcycleLast;
+    if (usTicks)
+    {
+        dUs = delta / usTicks;
+        // carry the sub-microsecond remainder so no drift accumulates
+        mcycleLast += dUs * usTicks;
+        microsAccum += dUs;
+    }
+
+    if (mstatus & 8)
+    {
+        asm volatile("csrs mstatus, 8" ::: "memory");
+    }
+
+    return microsAccum;
 #else
     register uint32_t ms, cycle_cnt;
 
@@ -391,6 +430,5 @@ void systemResetHard(void)
 {
     __disable_irq();
     NVIC_SystemReset();
-
 }
 #endif
