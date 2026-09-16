@@ -139,13 +139,13 @@
 const char *const lookupTableAccHardware[] = {
     "AUTO", "NONE", "ADXL345", "MPU6050", "MMA8452", "BMA280", "LSM303DLHC",
     "MPU6000", "MPU6500", "MPU9250", "ICM20601", "ICM20602", "ICM20608G", "ICM20649", "ICM20689", "ICM42605", "ICM42688P", "ICM40608",
-    "BMI160", "BMI270", "LSM6DSO", "BMI088", "FAKE"};
+    "BMI160", "BMI270", "LSM6DSO", "BMI088", "BMI323", "FAKE"};
 
 // sync with gyroHardware_e
 const char *const lookupTableGyroHardware[] = {
     "AUTO", "NONE", "MPU6050", "L3G4200D", "MPU3050", "L3GD20",
     "MPU6000", "MPU6500", "MPU9250", "ICM20601", "ICM20602", "ICM20608G", "ICM20649", "ICM20689", "ICM42605", "ICM42688P", "ICM40608",
-    "BMI160", "BMI270", "LSM6SDO", "BMI088", "FAKE"};
+    "BMI160", "BMI270", "LSM6SDO", "BMI088", "BMI323", "FAKE"};
 
 #if defined(USE_SENSOR_NAMES) || defined(USE_BARO)
 // sync with baroSensor_e
@@ -188,7 +188,7 @@ static const char *const lookupTableGyro[] = {
 
 #ifdef USE_GPS
 static const char *const lookupTableGPSProvider[] = {
-    "NMEA", "UBLOX", "MSP"};
+    "NMEA", "UBLOX", "MSP", "FBUS"};
 
 static const char *const lookupTableGPSSBASMode[] = {
     "AUTO", "EGNOS", "WAAS", "MSAS", "GAGAN", "NONE"};
@@ -226,6 +226,7 @@ static const char *const lookupTableSerialRX[] = {
     "FPORT2",
     "FBUS",
     "XB-A",
+    "IBUS2",
 };
 #endif
 
@@ -273,7 +274,7 @@ static const char *const lookupTableCameraControlMode[] = {
 
 static const char *const lookupTablePwmProtocol[] = {
     "PWM", "ONESHOT125", "ONESHOT42", "MULTISHOT", "RESERVED",
-    "DSHOT150", "DSHOT300", "DSHOT600", "PROSHOT1000", "CASTLE",
+    "DSHOT150", "DSHOT300", "DSHOT600", "PROSHOT1000", "CASTLE", "SRXL2",
     "DISABLED"};
 
 static const char *const lookupTableLowpassType[] = {
@@ -486,6 +487,8 @@ static const char *const lookupTableEscSensorProtocol[] = {
     "FLYROTOR",
     "GRAUPNER",
     "XDFLY",
+    "FBUS",
+    "SRXL2",
     "RECORD",
 };
 #endif
@@ -517,13 +520,22 @@ const char *const lookupTablePullMode[] = {
 const char *const lookupTableEdgeMode[] = {
     "FALLING", "RISING"};
 
-#ifdef USE_SMARTFUEL
-static const char *const lookupTableSmartFuelMode[] = {
-    "OFF", "VOLTAGE", "CURRENT", "COMBINED"};
-#endif
-
 const char *const lookupTableParamType[] = {
     "NONE", "TIMER1", "TIMER2", "TIMER3", "GV1", "GV2", "GV3", "GV4", "GV5", "GV6", "GV7", "GV8", "GV9"};
+
+#ifdef USE_SMARTFUEL
+static const char *const lookupTableSmartFuelMode[] = {
+    "OFF",
+    "VOLTAGE",
+    "CURRENT",
+    "COMBINED",
+};
+#endif
+
+static const char *const lookupTableAirborneMode[] = {
+    "CONSERVATIVE",
+    "STICK_RESPONSE",
+};
 
 #define LOOKUP_TABLE_ENTRY(name) {name, ARRAYLEN(name)}
 
@@ -642,6 +654,7 @@ const lookupTableEntry_t lookupTables[] = {
 #ifdef USE_SMARTFUEL
     LOOKUP_TABLE_ENTRY(lookupTableSmartFuelMode),
 #endif
+    LOOKUP_TABLE_ENTRY(lookupTableAirborneMode),
 };
 
 #undef LOOKUP_TABLE_ENTRY
@@ -874,6 +887,7 @@ const clivalue_t valueTable[] = {
     {"align_board_yaw", VAR_INT16 | MASTER_VALUE, .config.minmax = {-180, 360}, PG_BOARD_ALIGNMENT, offsetof(boardAlignment_t, yawDegrees)},
 
     // PG_BATTERY_CONFIG
+
     {"bat_profile", VAR_UINT8 | MASTER_VALUE, .config.minmaxUnsigned = {0, BATTERY_PROFILE_COUNT - 1}, PG_BATTERY_CONFIG, offsetof(batteryConfig_t, batteryProfile)},
     {"bat_capacity", VAR_UINT16 | MASTER_VALUE | MODE_ARRAY, .config.array.length = BATTERY_PROFILE_COUNT, PG_BATTERY_CONFIG, offsetof(batteryConfig_t, batteryCapacity)},
     {"vbat_max_cell_voltage", VAR_UINT16 | MASTER_VALUE, .config.minmaxUnsigned = {VBAT_CELL_VOTAGE_RANGE_MIN, VBAT_CELL_VOTAGE_RANGE_MAX}, PG_BATTERY_CONFIG, offsetof(batteryConfig_t, vbatmaxcellvoltage)},
@@ -967,26 +981,6 @@ const clivalue_t valueTable[] = {
     {"gov_recovery_time", VAR_UINT16 | MASTER_VALUE, .config.minmaxUnsigned = {0, 600}, PG_GOVERNOR_CONFIG, offsetof(governorConfig_t, gov_recovery_time)},
     {"gov_spooldown_time", VAR_UINT16 | MASTER_VALUE, .config.minmaxUnsigned = {0, 600}, PG_GOVERNOR_CONFIG, offsetof(governorConfig_t, gov_spooldown_time)},
     {"gov_throttle_hold_timeout", VAR_UINT8 | MASTER_VALUE, .config.minmaxUnsigned = {0, 250}, PG_GOVERNOR_CONFIG, offsetof(governorConfig_t, gov_throttle_hold_timeout)},
-    {"gov_autorotation_timeout", VAR_UINT8 | MASTER_VALUE, .config.minmaxUnsigned = {0, 250}, PG_GOVERNOR_CONFIG, offsetof(governorConfig_t, gov_autorotation_timeout)},
-    {"gov_handover_throttle", VAR_UINT8 | MASTER_VALUE, .config.minmaxUnsigned = {0, 100}, PG_GOVERNOR_CONFIG, offsetof(governorConfig_t, gov_handover_throttle)},
-    {"gov_idle_throttle", VAR_UINT8 | MASTER_VALUE, .config.minmaxUnsigned = {0, 250}, PG_GOVERNOR_CONFIG, offsetof(governorConfig_t, gov_idle_throttle)},
-    {"gov_auto_throttle", VAR_UINT8 | MASTER_VALUE, .config.minmaxUnsigned = {0, 250}, PG_GOVERNOR_CONFIG, offsetof(governorConfig_t, gov_auto_throttle)},
-    {"gov_bypass_throttle", VAR_UINT8 | MASTER_VALUE | MODE_ARRAY, .config.array.length = GOV_THROTTLE_CURVE_POINTS, PG_GOVERNOR_CONFIG, offsetof(governorConfig_t, gov_bypass_throttle)},
-    {"gov_pwr_filter", VAR_UINT8 | MASTER_VALUE, .config.minmaxUnsigned = {0, 250}, PG_GOVERNOR_CONFIG, offsetof(governorConfig_t, gov_pwr_filter)},
-    {"gov_rpm_filter", VAR_UINT8 | MASTER_VALUE, .config.minmaxUnsigned = {0, 250}, PG_GOVERNOR_CONFIG, offsetof(governorConfig_t, gov_rpm_filter)},
-    {"gov_tta_filter", VAR_UINT8 | MASTER_VALUE, .config.minmaxUnsigned = {0, 250}, PG_GOVERNOR_CONFIG, offsetof(governorConfig_t, gov_tta_filter)},
-    {"gov_ff_filter", VAR_UINT8 | MASTER_VALUE, .config.minmaxUnsigned = {0, 250}, PG_GOVERNOR_CONFIG, offsetof(governorConfig_t, gov_ff_filter)},
-    {"gov_d_filter", VAR_UINT8 | MASTER_VALUE, .config.minmaxUnsigned = {0, 250}, PG_GOVERNOR_CONFIG, offsetof(governorConfig_t, gov_d_filter)},
-
-// PG_CONTROLRATE_PROFILES
-#ifdef USE_PROFILE_NAMES
-    {"rateprofile_name", VAR_UINT8 | PROFILE_RATE_VALUE | MODE_STRING, .config.string = {1, MAX_RATE_PROFILE_NAME_LENGTH, STRING_FLAGS_NONE}, PG_CONTROL_RATE_PROFILES, offsetof(controlRateConfig_t, profileName)},
-#endif
-    {PARAM_NAME_RATES_TYPE, VAR_UINT8 | PROFILE_RATE_VALUE | MODE_LOOKUP, .config.lookup = {TABLE_RATES_TYPE}, PG_CONTROL_RATE_PROFILES, offsetof(controlRateConfig_t, rates_type)},
-
-    {"roll_rc_rate", VAR_UINT8 | PROFILE_RATE_VALUE, .config.minmaxUnsigned = {1, CONTROL_RATE_CONFIG_RC_RATES_MAX}, PG_CONTROL_RATE_PROFILES, offsetof(controlRateConfig_t, rcRates[FD_ROLL])},
-    {"pitch_rc_rate", VAR_UINT8 | PROFILE_RATE_VALUE, .config.minmaxUnsigned = {1, CONTROL_RATE_CONFIG_RC_RATES_MAX}, PG_CONTROL_RATE_PROFILES, offsetof(controlRateConfig_t, rcRates[FD_PITCH])},
-    {"yaw_rc_rate", VAR_UINT8 | PROFILE_RATE_VALUE, .config.minmaxUnsigned = {1, CONTROL_RATE_CONFIG_RC_RATES_MAX}, PG_CONTROL_RATE_PROFILES, offsetof(controlRateConfig_t, rcRates[FD_YAW])},
     {"collective_rc_rate", VAR_UINT8 | PROFILE_RATE_VALUE, .config.minmaxUnsigned = {1, CONTROL_RATE_CONFIG_RC_RATES_MAX}, PG_CONTROL_RATE_PROFILES, offsetof(controlRateConfig_t, rcRates[FD_COLL])},
     {"roll_expo", VAR_UINT8 | PROFILE_RATE_VALUE, .config.minmaxUnsigned = {0, CONTROL_RATE_CONFIG_RC_EXPO_MAX}, PG_CONTROL_RATE_PROFILES, offsetof(controlRateConfig_t, rcExpo[FD_ROLL])},
     {"pitch_expo", VAR_UINT8 | PROFILE_RATE_VALUE, .config.minmaxUnsigned = {0, CONTROL_RATE_CONFIG_RC_EXPO_MAX}, PG_CONTROL_RATE_PROFILES, offsetof(controlRateConfig_t, rcExpo[FD_PITCH])},
@@ -1006,7 +1000,6 @@ const clivalue_t valueTable[] = {
     {"pitch_level_expo", VAR_UINT8 | PROFILE_RATE_VALUE, .config.minmaxUnsigned = {0, CONTROL_RATE_CONFIG_RC_EXPO_MAX}, PG_CONTROL_RATE_PROFILES, offsetof(controlRateConfig_t, levelExpo[FD_PITCH])},
 
     {"roll_response", VAR_UINT8 | PROFILE_RATE_VALUE, .config.minmaxUnsigned = {0, 250}, PG_CONTROL_RATE_PROFILES, offsetof(controlRateConfig_t, response_time[FD_ROLL])},
-    {"pitch_response", VAR_UINT8 | PROFILE_RATE_VALUE, .config.minmaxUnsigned = {0, 250}, PG_CONTROL_RATE_PROFILES, offsetof(controlRateConfig_t, response_time[FD_PITCH])},
     {"yaw_response", VAR_UINT8 | PROFILE_RATE_VALUE, .config.minmaxUnsigned = {0, 250}, PG_CONTROL_RATE_PROFILES, offsetof(controlRateConfig_t, response_time[FD_YAW])},
     {"collective_response", VAR_UINT8 | PROFILE_RATE_VALUE, .config.minmaxUnsigned = {0, 250}, PG_CONTROL_RATE_PROFILES, offsetof(controlRateConfig_t, response_time[FD_COLL])},
 
@@ -1088,12 +1081,21 @@ const clivalue_t valueTable[] = {
 #endif
 
     // PG_RC_CONTROLS_CONFIG
+    {"rc_deflection", VAR_UINT16 | MASTER_VALUE, .config.minmaxUnsigned = {250, 750}, PG_RC_CONTROLS_CONFIG, offsetof(rcControlsConfig_t, rc_deflection)},
+    {"rc_min_throttle", VAR_UINT16 | MASTER_VALUE, .config.minmaxUnsigned = {0, PWM_PULSE_MAX}, PG_RC_CONTROLS_CONFIG, offsetof(rcControlsConfig_t, rc_min_throttle)},
+    {"rc_max_throttle", VAR_UINT16 | MASTER_VALUE, .config.minmaxUnsigned = {0, PWM_PULSE_MAX}, PG_RC_CONTROLS_CONFIG, offsetof(rcControlsConfig_t, rc_max_throttle)},
+    {"rc_smoothness", VAR_UINT8 | MASTER_VALUE, .config.minmaxUnsigned = {0, 250}, PG_RC_CONTROLS_CONFIG, offsetof(rcControlsConfig_t, rc_smoothness)},
+    {"rc_threshold", VAR_UINT8 | MASTER_VALUE | MODE_ARRAY, .config.array.length = 4, PG_RC_CONTROLS_CONFIG, offsetof(rcControlsConfig_t, rc_threshold)},
+    // PG_RC_CONTROLS_CONFIG
     {"rc_center", VAR_UINT16 | MASTER_VALUE, .config.minmaxUnsigned = {1200, 1700}, PG_RC_CONTROLS_CONFIG, offsetof(rcControlsConfig_t, rc_center)},
     {"rc_deflection", VAR_UINT16 | MASTER_VALUE, .config.minmaxUnsigned = {250, 750}, PG_RC_CONTROLS_CONFIG, offsetof(rcControlsConfig_t, rc_deflection)},
     {"rc_min_throttle", VAR_UINT16 | MASTER_VALUE, .config.minmaxUnsigned = {0, PWM_PULSE_MAX}, PG_RC_CONTROLS_CONFIG, offsetof(rcControlsConfig_t, rc_min_throttle)},
     {"rc_max_throttle", VAR_UINT16 | MASTER_VALUE, .config.minmaxUnsigned = {0, PWM_PULSE_MAX}, PG_RC_CONTROLS_CONFIG, offsetof(rcControlsConfig_t, rc_max_throttle)},
     {"rc_smoothness", VAR_UINT8 | MASTER_VALUE, .config.minmaxUnsigned = {0, 250}, PG_RC_CONTROLS_CONFIG, offsetof(rcControlsConfig_t, rc_smoothness)},
     {"rc_threshold", VAR_UINT8 | MASTER_VALUE | MODE_ARRAY, .config.array.length = 4, PG_RC_CONTROLS_CONFIG, offsetof(rcControlsConfig_t, rc_threshold)},
+    {"airborne_gyro_threshold", VAR_UINT8 | MASTER_VALUE, .config.minmaxUnsigned = {1, 100}, PG_RC_CONTROLS_CONFIG, offsetof(rcControlsConfig_t, airborne_gyro_threshold)},
+    {"airborne_acc_threshold", VAR_UINT8 | MASTER_VALUE, .config.minmaxUnsigned = {5, 50}, PG_RC_CONTROLS_CONFIG, offsetof(rcControlsConfig_t, airborne_acc_threshold)},
+    {"airborne_mode", VAR_UINT8 | MASTER_VALUE | MODE_LOOKUP, .config.lookup = {TABLE_AIRBORNE_MODE}, PG_RC_CONTROLS_CONFIG, offsetof(rcControlsConfig_t, airborne_mode)},
 
     {"deadband", VAR_UINT8 | MASTER_VALUE, .config.minmaxUnsigned = {0, 100}, PG_RC_CONTROLS_CONFIG, offsetof(rcControlsConfig_t, rc_deadband)},
     {"yaw_deadband", VAR_UINT8 | MASTER_VALUE, .config.minmaxUnsigned = {0, 100}, PG_RC_CONTROLS_CONFIG, offsetof(rcControlsConfig_t, rc_yaw_deadband)},
@@ -1108,8 +1110,6 @@ const clivalue_t valueTable[] = {
 #endif
 
     {"pid_mode", VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = {0, 9}, PG_PID_PROFILE, offsetof(pidProfile_t, pid_mode)},
-
-    {"pid_gyro_filter_type", VAR_UINT8 | PROFILE_VALUE | MODE_LOOKUP, .config.lookup = {TABLE_LPF_TYPE}, PG_PID_PROFILE, offsetof(pidProfile_t, gyro_filter_type)},
 
     {"pitch_p_gain", VAR_UINT16 | PROFILE_VALUE, .config.minmaxUnsigned = {0, PID_GAIN_MAX}, PG_PID_PROFILE, offsetof(pidProfile_t, pid[PID_PITCH].P)},
     {"pitch_i_gain", VAR_UINT16 | PROFILE_VALUE, .config.minmaxUnsigned = {0, PID_GAIN_MAX}, PG_PID_PROFILE, offsetof(pidProfile_t, pid[PID_PITCH].I)},
@@ -1145,7 +1145,6 @@ const clivalue_t valueTable[] = {
     {"yaw_ccw_stop_gain", VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = {25, 250}, PG_PID_PROFILE, offsetof(pidProfile_t, yaw_ccw_stop_gain)},
 
     {"yaw_precomp_cutoff", VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = {0, 250}, PG_PID_PROFILE, offsetof(pidProfile_t, yaw_precomp_cutoff)},
-    {"yaw_precomp_filter_type", VAR_UINT8 | PROFILE_VALUE | MODE_LOOKUP, .config.lookup = {TABLE_LPF_TYPE}, PG_PID_PROFILE, offsetof(pidProfile_t, yaw_precomp_filter_type)},
 
     {"yaw_cyclic_ff_gain", VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = {0, 250}, PG_PID_PROFILE, offsetof(pidProfile_t, yaw_cyclic_ff_gain)},
     {"yaw_collective_ff_gain", VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = {0, 250}, PG_PID_PROFILE, offsetof(pidProfile_t, yaw_collective_ff_gain)},
@@ -1164,6 +1163,7 @@ const clivalue_t valueTable[] = {
 
     {"error_decay_time_ground", VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = {0, 250}, PG_PID_PROFILE, offsetof(pidProfile_t, error_decay_time_ground)},
     {"error_decay_time_cyclic", VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = {0, 250}, PG_PID_PROFILE, offsetof(pidProfile_t, error_decay_time_cyclic)},
+    {"error_decay_gain_cyclic", VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = {0, 250}, PG_PID_PROFILE, offsetof(pidProfile_t, error_decay_gain_cyclic)},
     {"error_decay_time_yaw", VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = {0, 250}, PG_PID_PROFILE, offsetof(pidProfile_t, error_decay_time_yaw)},
     {"error_decay_limit_cyclic", VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = {0, 250}, PG_PID_PROFILE, offsetof(pidProfile_t, error_decay_limit_cyclic)},
     {"error_decay_limit_yaw", VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = {0, 250}, PG_PID_PROFILE, offsetof(pidProfile_t, error_decay_limit_yaw)},
@@ -1182,6 +1182,7 @@ const clivalue_t valueTable[] = {
     {"horizon_transition", VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = {0, 200}, PG_PID_PROFILE, offsetof(pidProfile_t, horizon.transition)},
     {"horizon_tilt_effect", VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = {0, 250}, PG_PID_PROFILE, offsetof(pidProfile_t, horizon.tilt_effect)},
     {"horizon_tilt_expert_mode", VAR_UINT8 | PROFILE_VALUE | MODE_LOOKUP, .config.lookup = {TABLE_OFF_ON}, PG_PID_PROFILE, offsetof(pidProfile_t, horizon.tilt_expert_mode)},
+    {"horizon_angle_limit", VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = {10, 90}, PG_PID_PROFILE, offsetof(pidProfile_t, horizon.angle_limit)},
 
 #ifdef USE_ACRO_TRAINER
     {"acro_trainer_angle_limit", VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = {10, 80}, PG_PID_PROFILE, offsetof(pidProfile_t, trainer.angle_limit)},
@@ -1228,8 +1229,8 @@ const clivalue_t valueTable[] = {
     {"gov_yaw_ff_weight", VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = {0, 250}, PG_PID_PROFILE, offsetof(pidProfile_t, governor.yaw_weight)},
     {"gov_cyclic_ff_weight", VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = {0, 250}, PG_PID_PROFILE, offsetof(pidProfile_t, governor.cyclic_weight)},
     {"gov_collective_ff_weight", VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = {0, 250}, PG_PID_PROFILE, offsetof(pidProfile_t, governor.collective_weight)},
-    {"gov_max_throttle", VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = {0, 100}, PG_PID_PROFILE, offsetof(pidProfile_t, governor.max_throttle)},
-    {"gov_min_throttle", VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = {0, 100}, PG_PID_PROFILE, offsetof(pidProfile_t, governor.min_throttle)},
+    {"gov_max_throttle", VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = {10, 100}, PG_PID_PROFILE, offsetof(pidProfile_t, governor.max_throttle)},
+    {"gov_min_throttle", VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = {10, 100}, PG_PID_PROFILE, offsetof(pidProfile_t, governor.min_throttle)},
     {"gov_fallback_drop", VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = {0, 50}, PG_PID_PROFILE, offsetof(pidProfile_t, governor.fallback_drop)},
     {"gov_collective_curve", VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = {5, 40}, PG_PID_PROFILE, offsetof(pidProfile_t, governor.collective_curve)},
     {"gov_dyn_min_throttle", VAR_UINT8 | PROFILE_VALUE, .config.minmaxUnsigned = {0, 100}, PG_PID_PROFILE, offsetof(pidProfile_t, governor.dyn_min_throttle)},
@@ -1763,14 +1764,16 @@ const clivalue_t valueTable[] = {
     {"box_user_4_name", VAR_UINT8 | MASTER_VALUE | MODE_STRING, .config.string = {1, MAX_BOX_USER_NAME_LENGTH, STRING_FLAGS_NONE}, PG_MODE_ACTIVATION_CONFIG, offsetof(modeActivationConfig_t, box_user_4_name)},
 #endif
 
+#if defined(USE_SBUS_OUTPUT) || defined(USE_FBUS_MASTER)
+    {"bus_servo_source_type", VAR_UINT8 | MASTER_VALUE | MODE_ARRAY, .config.array.length = BUS_SERVO_CHANNELS, PG_BUS_SERVO_CONFIG, offsetof(busServoConfig_t, sourceType)},
+#endif
+
 #ifdef USE_SBUS_OUTPUT
     {"sbus_out_source_type", VAR_UINT8 | MASTER_VALUE | MODE_ARRAY, .config.array.length = SBUS_OUT_CHANNELS, PG_DRIVER_SBUS_OUT_CONFIG, offsetof(sbusOutConfig_t, sourceType)},
     {"sbus_out_source_index", VAR_UINT8 | MASTER_VALUE | MODE_ARRAY, .config.array.length = SBUS_OUT_CHANNELS, PG_DRIVER_SBUS_OUT_CONFIG, offsetof(sbusOutConfig_t, sourceIndex)},
     {"sbus_out_source_range_low", VAR_INT16 | MASTER_VALUE | MODE_ARRAY, .config.array.length = SBUS_OUT_CHANNELS, PG_DRIVER_SBUS_OUT_CONFIG, offsetof(sbusOutConfig_t, sourceRangeLow)},
     {"sbus_out_source_range_high", VAR_INT16 | MASTER_VALUE | MODE_ARRAY, .config.array.length = SBUS_OUT_CHANNELS, PG_DRIVER_SBUS_OUT_CONFIG, offsetof(sbusOutConfig_t, sourceRangeHigh)},
     {"sbus_out_frame_rate", VAR_UINT8 | MASTER_VALUE, .config.minmaxUnsigned = {25, 250}, PG_DRIVER_SBUS_OUT_CONFIG, offsetof(sbusOutConfig_t, frameRate)},
-    {"sbus_out_pinswap", VAR_UINT8 | MASTER_VALUE | MODE_LOOKUP, .config.lookup = {TABLE_OFF_ON}, PG_DRIVER_SBUS_OUT_CONFIG, offsetof(sbusOutConfig_t, pinSwap)},
-    {"sbus_out_inverted", VAR_UINT8 | MASTER_VALUE | MODE_LOOKUP, .config.lookup = {TABLE_OFF_ON}, PG_DRIVER_SBUS_OUT_CONFIG, offsetof(sbusOutConfig_t, inverted)},
 #endif
 
 #ifdef USE_FBUS_MASTER
@@ -1786,16 +1789,7 @@ const clivalue_t valueTable[] = {
     {"fbus_master_forwarded_sensors", VAR_UINT8 | MASTER_VALUE | MODE_ARRAY, .config.array.length = FBUS_MASTER_MAX_FORWARDED_SENSORS, PG_DRIVER_FBUS_MASTER_CONFIG, offsetof(fbusMasterConfig_t, forwardedSensors)},
 #endif
 
-#if defined(USE_SBUS_OUTPUT) || defined(USE_FBUS_MASTER)
-    {"bus_servo_source_type", VAR_UINT8 | MASTER_VALUE | MODE_ARRAY, .config.array.length = BUS_SERVO_CHANNELS, PG_BUS_SERVO_CONFIG, offsetof(busServoConfig_t, sourceType)},
-#endif
-
 #ifdef USE_SPORT_MASTER
     {"sport_master_pinswap", VAR_UINT8 | MASTER_VALUE | MODE_LOOKUP, .config.lookup = {TABLE_OFF_ON}, PG_DRIVER_SPORT_MASTER_CONFIG, offsetof(sportMasterConfig_t, pinSwap)},
     {"sport_master_inverted", VAR_UINT8 | MASTER_VALUE | MODE_LOOKUP, .config.lookup = {TABLE_OFF_ON}, PG_DRIVER_SPORT_MASTER_CONFIG, offsetof(sportMasterConfig_t, inverted)},
 #endif
-};
-
-const uint16_t valueTableEntryCount = ARRAYLEN(valueTable);
-
-STATIC_ASSERT(LOOKUP_TABLE_COUNT == ARRAYLEN(lookupTables), LOOKUP_TABLE_COUNT_incorrect);
