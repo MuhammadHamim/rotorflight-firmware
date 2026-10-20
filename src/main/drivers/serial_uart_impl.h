@@ -26,64 +26,64 @@
 #define UARTDEV_COUNT_MAX 6
 #define UARTHARDWARE_MAX_PINS 4
 #ifndef UART_RX_BUFFER_SIZE
-#define UART_RX_BUFFER_SIZE     128
+#define UART_RX_BUFFER_SIZE 128
 #endif
 #ifndef UART_TX_BUFFER_SIZE
 #ifdef USE_MSP_DISPLAYPORT
-#define UART_TX_BUFFER_SIZE     1280
+#define UART_TX_BUFFER_SIZE 1280
 #else
-#define UART_TX_BUFFER_SIZE     256
+#define UART_TX_BUFFER_SIZE 256
 #endif
 #endif
 #elif defined(STM32F7)
 #define UARTDEV_COUNT_MAX 8
 #define UARTHARDWARE_MAX_PINS 4
 #ifndef UART_RX_BUFFER_SIZE
-#define UART_RX_BUFFER_SIZE     128
+#define UART_RX_BUFFER_SIZE 128
 #endif
 #ifndef UART_TX_BUFFER_SIZE
 #ifdef USE_MSP_DISPLAYPORT
-#define UART_TX_BUFFER_SIZE     1280
+#define UART_TX_BUFFER_SIZE 1280
 #else
-#define UART_TX_BUFFER_SIZE     256
+#define UART_TX_BUFFER_SIZE 256
 #endif
 #endif
 #elif defined(STM32H7)
 #define UARTDEV_COUNT_MAX 11 // UARTs 1 to 10 + LPUART1
 #define UARTHARDWARE_MAX_PINS 5
 #ifndef UART_RX_BUFFER_SIZE
-#define UART_RX_BUFFER_SIZE     128
+#define UART_RX_BUFFER_SIZE 128
 #endif
 #ifndef UART_TX_BUFFER_SIZE
 #ifdef USE_MSP_DISPLAYPORT
-#define UART_TX_BUFFER_SIZE     1280
+#define UART_TX_BUFFER_SIZE 1280
 #else
-#define UART_TX_BUFFER_SIZE     256
+#define UART_TX_BUFFER_SIZE 256
 #endif
 #endif
 #elif defined(STM32G4)
-#define UARTDEV_COUNT_MAX 11  // UARTs 1 to 5 + LPUART1 (index 10)
+#define UARTDEV_COUNT_MAX 11 // UARTs 1 to 5 + LPUART1 (index 10)
 #define UARTHARDWARE_MAX_PINS 3
 #ifndef UART_RX_BUFFER_SIZE
-#define UART_RX_BUFFER_SIZE     128
+#define UART_RX_BUFFER_SIZE 128
 #endif
 #ifndef UART_TX_BUFFER_SIZE
 #ifdef USE_MSP_DISPLAYPORT
-#define UART_TX_BUFFER_SIZE     1280
+#define UART_TX_BUFFER_SIZE 1280
 #else
-#define UART_TX_BUFFER_SIZE     256
+#define UART_TX_BUFFER_SIZE 256
 #endif
 #endif
 #elif defined(CH32H41x) || defined(CH32H4)
 #define UARTDEV_COUNT_MAX 11
 #ifndef UART_RX_BUFFER_SIZE
-#define UART_RX_BUFFER_SIZE     128
+#define UART_RX_BUFFER_SIZE 128
 #endif
 #ifndef UART_TX_BUFFER_SIZE
 #ifdef USE_MSP_DISPLAYPORT
-#define UART_TX_BUFFER_SIZE     1280
+#define UART_TX_BUFFER_SIZE 1280
 #else
-#define UART_TX_BUFFER_SIZE     256
+#define UART_TX_BUFFER_SIZE 256
 #endif
 #endif
 #else
@@ -160,16 +160,18 @@
 
 #define UARTDEV_COUNT (UARTDEV_COUNT_1 + UARTDEV_COUNT_2 + UARTDEV_COUNT_3 + UARTDEV_COUNT_4 + UARTDEV_COUNT_5 + UARTDEV_COUNT_6 + UARTDEV_COUNT_7 + UARTDEV_COUNT_8 + UARTDEV_COUNT_9 + UARTDEV_COUNT_10 + LPUARTDEV_COUNT_1)
 
-typedef struct uartPinDef_s {
+typedef struct uartPinDef_s
+{
     ioTag_t pin;
 #if defined(STM32F7) || defined(STM32H7) || defined(STM32G4) || defined(CH32H41x) || defined(CH32H4)
     uint8_t af;
 #endif
 } uartPinDef_t;
 
-typedef struct uartHardware_s {
-    UARTDevice_e device;    // XXX Not required for full allocation
-    USART_TypeDef* reg;
+typedef struct uartHardware_s
+{
+    UARTDevice_e device; // XXX Not required for full allocation
+    USART_TypeDef *reg;
 
 #ifdef USE_DMA
     dmaResource_t *txDMAResource;
@@ -209,7 +211,8 @@ extern const uartHardware_t uartHardware[];
 // uartDevice_t is an actual device instance.
 // XXX Instances are allocated for uarts defined by USE_UARTx atm.
 
-typedef struct uartDevice_s {
+typedef struct uartDevice_s
+{
     uartPort_t port;
     const uartHardware_t *hardware;
     uartPinDef_t rxPin;
@@ -239,7 +242,7 @@ void uartReconfigure(uartPort_t *uartPort);
 
 void uartConfigureDma(uartDevice_t *uartdev);
 
-void uartDmaIrqHandler(dmaChannelDescriptor_t* descriptor);
+void uartDmaIrqHandler(dmaChannelDescriptor_t *descriptor);
 
 #if defined(STM32F7) || defined(STM32H7) || defined(STM32G4)
 #define UART_REG_RXD(base) ((base)->RDR)
@@ -249,17 +252,19 @@ void uartDmaIrqHandler(dmaChannelDescriptor_t* descriptor);
 #define UART_REG_TXD(base) ((base)->DR)
 #endif
 
-#define UART_BUFFER(type, n, rxtx) type volatile uint8_t uart ## n ## rxtx ## xBuffer[UART_ ## rxtx ## X_BUFFER_SIZE]
+#define UART_BUFFER(type, n, rxtx) type volatile uint8_t uart##n##rxtx##xBuffer[UART_##rxtx##X_BUFFER_SIZE]
 
 #define UART_BUFFERS_EXTERN(n) \
     UART_BUFFER(extern, n, R); \
-    UART_BUFFER(extern, n, T); struct dummy_s
+    UART_BUFFER(extern, n, T); \
+    struct dummy_s
 
-#define LPUART_BUFFER(type, n, rxtx) type volatile uint8_t lpuart ## n ## rxtx ## xBuffer[UART_ ## rxtx ## X_BUFFER_SIZE]
+#define LPUART_BUFFER(type, n, rxtx) type volatile uint8_t lpuart##n##rxtx##xBuffer[UART_##rxtx##X_BUFFER_SIZE]
 
 #define LPUART_BUFFERS_EXTERN(n) \
     LPUART_BUFFER(extern, n, R); \
-    LPUART_BUFFER(extern, n, T); struct dummy_s
+    LPUART_BUFFER(extern, n, T); \
+    struct dummy_s
 
 #ifdef USE_UART1
 UART_BUFFERS_EXTERN(1);
